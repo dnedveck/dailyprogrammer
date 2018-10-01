@@ -138,5 +138,54 @@ length(enable5)
 
 Dang, that cut down the search space down to only `r length(enable5) / length(enable1)` of what it was. 
 
+-----------
 
+
+One thing I noticed is that for five letter words, the only search space is four letter words, for six letter, five. 
+
+So, steps to do this search would be:
+
+- sort words
+- split into lists based on number of char
+- some kind of function to go through a list of n-letter words, and search for n-1-letter words
+
+```{r}
+max(sapply(enable5, nchar))
+```
+
+ok, so the max number is 28. Also it ran pretty fast so I think I can just use nchar(x) == n, and go through the different n's
+
+
+```{r}
+nletters.ls <- lapply(4:28, function(n){
+  return( enable1[nchar(enable1) == n ])
+})
+
+names(nletters.ls) <- 4:28
+```
+
+Here we go:
+
+```{r}
+time1 <- Sys.time()
+fivefunnel <- sapply(2:25, function(n){
+  wordlen <- sapply(nletters.ls[[n]], function(x){ 
+         bonus(wordlist = nletters.ls[[n-1]], query = x) %>% 
+      length
+  }
+  )
+  
+  keeps <- nletters.ls[[n]][wordlen == 5]
+  return(keeps)
+})
+time2 <- Sys.time()
+
+time2- time1
+
+# Time difference of 2.657189 mins
+
+fivefunnel %>% unlist %>% length
+
+fivefunnel %>% unlist
+```
 
