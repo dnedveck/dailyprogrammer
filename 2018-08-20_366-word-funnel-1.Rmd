@@ -136,7 +136,7 @@ length(enable5)
 ```
 
 
-Dang, that cut down the search space down to `r length(enable5) / length(enable1)` of what it was. 
+Dang, that cut down the search space down to only `r length(enable5) / length(enable1)` of what it was. 
 
 
 
