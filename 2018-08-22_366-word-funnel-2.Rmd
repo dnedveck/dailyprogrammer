@@ -6,13 +6,17 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library(magrittr)
+library(microbenchmark)
+
 knitr::opts_chunk$set(echo = TRUE)
+options(stringsAsFactors = FALSE)
 ```
 
 ## Challenge
 
 
-> A word funnel is a series of words formed by removing one letter at a time from a starting word, keeping the remaining letters in order. For the purpose of this challenge, a word is defined as an entry in the enable1 word list. An example of a word funnel is:
+> A word funnel is a series of words formed by removing one letter at a time from a starting word, keeping the remaining letters in order. For the purpose of this challenge, a word is defined as an entry in the [enable1 word list](https://raw.githubusercontent.com/dolph/dictionary/master/enable1.txt). An example of a word funnel is:
 
 ```
 gnash => gash => ash => ah
@@ -31,6 +35,87 @@ funnel2("turntables") => 5
 funnel2("implosive") => 1
 funnel2("programmer") => 2
 ```
+
+### work
+
+loading in the enable1 wordlist
+
+```{r}
+enable1 <- read.csv("https://raw.githubusercontent.com/dolph/dictionary/master/enable1.txt", header = FALSE)[, 1]
+```
+
+My first thought is to take the function that I wrote in "Word Funnel 1", apply that to the word, and then recursively apply that to the output until I am down to one letter.
+
+```{r}
+wf1.bonus <- function(wordlist, query){
+  query.chr <- strsplit(query, "*") %>% unlist
+  
+  query.set <- sapply(seq_along(query.chr), 
+                       function(x) {
+    paste(query.chr[-x], collapse = "")
+    }
+    )
+  
+  return(wordlist[wordlist %in% query.set])
+}
+```
+
+
+For example, following `boats -> bats`
+
+```{r}
+wf1.bonus(enable1, "boats")
+wf1.bonus(enable1, "bats")
+wf1.bonus(enable1, "bat")
+wf1.bonus(enable1, "ba")
+```
+
+Hmm, since `a` didn't turn up, are there single letter words?
+
+```{r}
+enable1 %>% nchar %>% table
+```
+
+nope.
+
+Next thing is how to store this information? 
+
+I could go through each tree and record the length of the largest chain. Some kind of logic of:
+
+- run bonus to get the list of words
+- run bonus on each result and keep track of which one(s) return results
+- store the ones that had results, and their results
+- repeat on the new results
+
+I think the next step is how to store these data -- my mind goes towards some kind of tree structure. Let's see if I can implement that in R lists 
+
+```{r}
+# I'll need to rewrite the function to return a named list
+wf2 <- function(wordlist, query){
+  query.chr <- strsplit(query, "*") %>% unlist
+  
+  query.set <- sapply(seq_along(query.chr), 
+                       function(x) {
+    paste(query.chr[-x], collapse = "")
+    }
+    )
+  
+  ret.list <- as.list(wordlist[wordlist %in% query.set])
+  names(ret.list) <- ret.list %>% unlist
+  
+  return(ret.list)
+}
+
+boat.tree <- wf2(enable1, "boats")
+
+round1 <- lapply(boat.tree, function(x) wf2(enable1, x))
+round1
+```
+
+
+
+
+-------------------------------------
 
 
 ## Bonus 1
