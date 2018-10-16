@@ -113,6 +113,143 @@ round1
 ```
 
 
+Well, that's a start. I'm not sure how I would transverse this structure .... 
+
+#### data.tree
+
+```{r}
+library(data.tree)
+```
+
+
+Ok, let's try to recreate what I was doing with the lists, except with data.tree.
+
+This is going to be harder than I expected because data.tree uses R6 classes. 
+
+```{r}
+# rewriting the wordfunnel1-bonus function to make it easier to use
+FindChildWords <- function(query, wordlist = enable1){
+  query.chr <- strsplit(query, "*") %>% unlist
+  
+  query.set <- sapply(seq_along(query.chr), 
+                       function(x) {
+    paste(query.chr[-x], collapse = "")
+    }
+    )
+  
+  # ret.list <- as.list(wordlist[wordlist %in% query.set])
+  # names(ret.list) <- ret.list %>% unlist
+  
+  return(wordlist[wordlist %in% query.set])
+}
+
+```
+
+
+
+```{r}
+# starting the tree with a root node
+(boats.tree <- Node$new("boats"))
+
+# let's add the results of the first word funnel iteration
+FindChildWords("boats")
+FindChildWords("boats") %>% sapply(., FUN = function(x) boats.tree$AddChild(x)) %>% invisible()
+boats.tree
+
+```
+
+
+so I guess that did something ... but it doesn't feel right. And I'm unsure how I would tell R to 'do that for every child node' ...
+
+```{r}
+boats.tree$Get("name", filterFun = isLeaf)
+```
+
+
+In reading the vignette(s) / internet, it looks like I should go about this by making a function that constructs the tree recursively ....
+
+In general the steps are:
+
+- check if parent is Node, if not, make it so
+- create child nodes
+- recurse into child nodes and run function as long as nchar > 2
+- return parent Node
+
+```{r}
+# making a reduced search space list
+word.list <- split(enable1, nchar(enable1))
+```
+
+
+```{r}
+BuildWordTree <- function(parent){
+  # - check if parent is Node, if not, make it so
+  if( typeof(parent) != "environment") parent <- Node$new(parent)
+
+  
+  ################
+  # create child nodes
+  child.words <- FindChildWords(parent$Get("name"), word.list[[nchar(parent$Get("name")) - 2]])
+  
+  # if no child words found, we're done here.
+  if(length(child.words) == 0){
+    return(parent)
+  }
+  # otherwise, let's add child nodes
+  for (word in child.words) child <- parent$AddChild(word)
+  
+  ##################
+  # recurse into child nodes and run function as long as nchar > 2
+  if(parent$children[[1]]$Get("name") %>% nchar > 2){
+    for(i in seq_along(child.words)) BuildWordTree(parent = parent$children[[i]])
+  }
+  
+  # - return parent Node
+  return(parent)
+}
+```
+
+```{r}
+boat.tree <- BuildWordTree("boats")
+boat.tree
+
+princesses.tree <- BuildWordTree("princesses")
+
+microbenchmark(BuildWordTree("princesses"), times = 20)
+```
+
+That speed looks promising? 
+
+Next is how do I find the longest branch of the tree returned? 
+
+```{r}
+boat.tree$Get("level") %>% max
+```
+
+
+```{r}
+funnel2 <- function(word){
+  word.tree <- BuildWordTree(word)
+  
+  word.tree$Get("level") %>% max
+}
+```
+
+funnel2("gnash") => 4
+funnel2("princesses") => 9
+funnel2("turntables") => 5
+funnel2("implosive") => 1
+funnel2("programmer") => 2
+
+```{r}
+test.cases <- c("gnash", "princesses", "turntables", "implosive", "programmer")
+```
+
+```{r}
+sapply(test.cases, funnel2)
+```
+
+
 
 
 -------------------------------------
