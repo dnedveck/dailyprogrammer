@@ -36,6 +36,95 @@ funnel2("implosive") => 1
 funnel2("programmer") => 2
 ```
 
+### solution
+
+```{r}
+library(data.tree)
+```
+
+
+```{r}
+enable1 <- read.csv("https://raw.githubusercontent.com/dolph/dictionary/master/enable1.txt", header = FALSE)[, 1]
+```
+
+
+```{r}
+# making a reduced search space list
+word.list <- split(enable1, nchar(enable1))
+```
+
+
+```{r}
+# rewriting the wordfunnel1-bonus function to make it easier to use
+FindChildWords <- function(query, wordlist = enable1){
+  query.chr <- strsplit(query, "*") %>% unlist
+  
+  query.set <- sapply(seq_along(query.chr), 
+                       function(x) {
+    paste(query.chr[-x], collapse = "")
+    }
+    )
+  
+  # ret.list <- as.list(wordlist[wordlist %in% query.set])
+  # names(ret.list) <- ret.list %>% unlist
+  
+  return(wordlist[wordlist %in% query.set])
+}
+
+
+BuildWordTree <- function(parent){
+  # - check if parent is Node, if not, make it so
+  if( typeof(parent) != "environment") parent <- Node$new(parent)
+
+  
+  ################
+  # create child nodes
+  child.words <- FindChildWords(parent$Get("name"), word.list[[nchar(parent$Get("name")) - 2]])
+  
+  # if no child words found, we're done here.
+  if(length(child.words) == 0){
+    return(parent)
+  }
+  # otherwise, let's add child nodes
+  for (word in child.words) child <- parent$AddChild(word)
+  
+  ##################
+  # recurse into child nodes and run function as long as nchar > 2
+  if(parent$children[[1]]$Get("name") %>% nchar > 2){
+    for(i in seq_along(child.words)) BuildWordTree(parent = parent$children[[i]])
+  }
+  
+  # - return parent Node
+  return(parent)
+}
+```
+
+```{r}
+microbenchmark(BuildWordTree("princesses"), times = 20)
+```
+
+Speed looks acceptable.
+
+```{r}
+funnel2 <- function(word){
+  word.tree <- BuildWordTree(word)
+  
+  word.tree$Get("level") %>% max
+}
+```
+
+
+```{r}
+test.cases <- c("gnash", "princesses", "turntables", "implosive", "programmer")
+```
+
+```{r}
+sapply(test.cases, funnel2)
+```
+
+
+
+
 ### work
 
 loading in the enable1 wordlist
@@ -259,6 +348,22 @@ sapply(test.cases, funnel2)
 
 > Find the one word in the word list that starts a funnel of length 10.
 
+
+
+### Work
+
+Is it tenable to just step upwards until I find a word that has a funnel of length 10?
+```{r}
+# let's see how long it takes to run 20 12-letter words
+startt <- Sys.time()
+catch <-  word.list[[11]] %>% sapply(. , function(x) funnel2(x))
+endt <- Sys.time()
+
+endt - startt
+# Time difference of 24.5908 secs
+```
+
+
 ## Bonus 2
 
 > For this bonus, you are allowed to remove more than one letter in a single step of the word funnel. For instance, you may step from sideboard to sidebar by removing the o and the final d in a single step. With this modified rule, it's possible to get a funnel of length 12:
@@ -281,4 +386,22 @@ at
 `preformationists` is one of six words that begin a modified funnel of length 12. Find the other five words.
 
 
+### work
 
+
+Something worth considering is building trees top-down vs. bottom up -- starting with big words and finding those that are in them, vs starting with the smallest words and finding which words could contain them. 
+
+I think bottom up would work the best, just because I can think of a way to grep for them:
+
+searching for parents of "bat"
+
+```
+grep("*bat", fourletterwords)
+grep("b*at", fourletterwords)
+grep("ba*t", fourletterwords)
+grep("bat*", fourletterwords)
+```
+
+As I got I could store the length of the longest branch.
+
+It would be neat if I could also store the longest branch to see what the words are. 
