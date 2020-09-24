@@ -119,13 +119,27 @@ test.cases <- c("gnash", "princesses", "turntables", "implosive", "programmer")
 ```
 
 ```{r}
+microbenchmark(
+  sapply(test.cases, funnel2),
+  times = 20)
+```
+
+```{r}
 sapply(test.cases, funnel2)
 ```
 
 
+## Session info
+
+```{r}
+system("lscpu", intern = TRUE) %>% cat(sep = "\n")
+sessionInfo()
+```
 
 
-### work
+-------------
+
+## work
 
 loading in the enable1 wordlist
 
